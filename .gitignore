@@ -1,5 +1,8 @@
 chromedriver.exe
 __pycache__
 .idea
+working
+py-hanspell
 
 *.whl
+*.csv
