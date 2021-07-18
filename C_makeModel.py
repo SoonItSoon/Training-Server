@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+
 plt.draw()
 
 from sklearn import preprocessing
@@ -15,7 +16,7 @@ from gensim.models.keyedvectors import KeyedVectors
 from sklearn.metrics import classification_report
 
 train_data = pd.read_csv('Train.csv', names=['message', 'table'], encoding='utf-8')
-train_data.message = train_data.message.astype (str)
+train_data.message = train_data.message.astype(str)
 
 train_a = train_data['message']
 train_b = train_data['table']
@@ -24,7 +25,7 @@ intent_train = train_a.values.tolist()
 label_train = train_b.values.tolist()
 
 test_data = pd.read_csv('Test.csv', names=['message', 'table'], encoding='utf-8')
-test_data.message = test_data.message.astype (str)
+test_data.message = test_data.message.astype(str)
 
 test_a = test_data['message']
 test_b = test_data['table']
@@ -54,17 +55,17 @@ print(sequences[:5])
 
 word_index = tokenizer.word_index
 vocab_size = len(word_index) + 1
-print('단어 집합(Vocabulary)의 크기 :',vocab_size)
+print('단어 집합(Vocabulary)의 크기 :', vocab_size)
 
-print('문장의 최대 길이 :',max(len(l) for l in sequences))
-print('문장의 평균 길이 :',sum(map(len, sequences))/len(sequences))
+print('문장의 최대 길이 :', max(len(l) for l in sequences))
+print('문장의 평균 길이 :', sum(map(len, sequences)) / len(sequences))
 plt.hist([len(s) for s in sequences], bins=50)
 plt.xlabel('length of samples')
 plt.ylabel('number of samples')
 plt.show()
 
 max_len = 30
-intent_train = pad_sequences(sequences, maxlen = max_len)
+intent_train = pad_sequences(sequences, maxlen=max_len)
 label_train = to_categorical(np.asarray(label_train))
 print('전체 데이터의 크기(shape):', intent_train.shape)
 print('레이블 데이터의 크기(shape):', label_train.shape)
@@ -102,33 +103,35 @@ embedding_dim = 100
 embedding_matrix = np.zeros((vocab_size, embedding_dim))
 print(np.shape(embedding_matrix))
 
+
 def get_vector(word):
     if word in word2vec_model:
         return word2vec_model[word]
     else:
         return None
 
-for word, i in word_index.items(): # 훈련 데이터의 단어 집합에서 단어와 정수 인덱스를 1개씩 꺼내온다.
-    temp = get_vector(word) # 단어(key) 해당되는 임베딩 벡터의 300개의 값(value)를 임시 변수에 저장
-    if temp is not None: # 만약 None이 아니라면 임베딩 벡터의 값을 리턴받은 것이므로
-        embedding_matrix[i] = temp # 해당 단어 위치의 행에 벡터의 값을 저장한다.
 
-filter_sizes = [2,3,5] #사용하는 커널의 사이즈
-num_filters = 512 #커널들의 개수
-drop = 0.5 #드롭아웃 확률 50%
+for word, i in word_index.items():  # 훈련 데이터의 단어 집합에서 단어와 정수 인덱스를 1개씩 꺼내온다.
+    temp = get_vector(word)  # 단어(key) 해당되는 임베딩 벡터의 300개의 값(value)를 임시 변수에 저장
+    if temp is not None:  # 만약 None이 아니라면 임베딩 벡터의 값을 리턴받은 것이므로
+        embedding_matrix[i] = temp  # 해당 단어 위치의 행에 벡터의 값을 저장한다.
 
-model_input = Input(shape = (max_len,))
+filter_sizes = [2, 3, 5]  # 사용하는 커널의 사이즈
+num_filters = 512  # 커널들의 개수
+drop = 0.5  # 드롭아웃 확률 50%
+
+model_input = Input(shape=(max_len,))
 z = Embedding(vocab_size, embedding_dim, weights=[embedding_matrix],
-                      input_length=max_len, trainable=False)(model_input)
+              input_length=max_len, trainable=False)(model_input)
 
 conv_blocks = []
 
 for sz in filter_sizes:
-    conv = Conv1D(filters = num_filters,
-                         kernel_size = sz,
-                         padding = "valid",
-                         activation = "relu",
-                         strides = 1)(z)
+    conv = Conv1D(filters=num_filters,
+                  kernel_size=sz,
+                  padding="valid",
+                  activation="relu",
+                  strides=1)(z)
     conv = GlobalMaxPooling1D()(conv)
     conv = Flatten()(conv)
     conv_blocks.append(conv)
@@ -146,10 +149,9 @@ model.compile(loss='categorical_crossentropy',
 print(model.summary())
 
 history = model.fit(X_train, y_train,
-          batch_size=100, #1회 학습시 주는 데이터 개수
-          epochs=20, #전체 데이타 10번 학습
-          validation_data = (X_val, y_val))
-
+                    batch_size=100,  # 1회 학습시 주는 데이터 개수
+                    epochs=20,  # 전체 데이타 10번 학습
+                    validation_data=(X_val, y_val))
 
 epochs = range(1, len(history.history['acc']) + 1)
 plt.plot(epochs, history.history['acc'])
@@ -173,17 +175,12 @@ X_test = tokenizer.texts_to_sequences(X_test)
 X_test = pad_sequences(X_test, maxlen=max_len)
 
 y_predicted = model.predict(X_test)
-y_predicted = y_predicted.argmax(axis=-1) # 예측된 정수 시퀀스로 변환
+y_predicted = y_predicted.argmax(axis=-1)  # 예측된 정수 시퀀스로 변환
 
-y_predicted = idx_encode.inverse_transform(y_predicted) # 정수 시퀀스를 레이블에 해당하는 텍스트 시퀀스로 변환
-y_test = idx_encode.inverse_transform(y_test) # 정수 시퀀스를 레이블에 해당하는 텍스트 시퀀스로 변환
+y_predicted = idx_encode.inverse_transform(y_predicted)  # 정수 시퀀스를 레이블에 해당하는 텍스트 시퀀스로 변환
+y_test = idx_encode.inverse_transform(y_test)  # 정수 시퀀스를 레이블에 해당하는 텍스트 시퀀스로 변환
 
 print('accuracy: ', sum(y_predicted == y_test) / len(y_test))
 print("Precision, Recall and F1-Score:\n\n", classification_report(y_test, y_predicted))
 
 tf.keras.models.save_model(model, 'mnist_mlp_model.h5')
-
-
-
-
-
